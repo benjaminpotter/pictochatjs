@@ -1,0 +1,103 @@
+<body style="text-align: center;">
+    <div id="chat-feed" style="text-align: center; overflow: visible;">
+            
+    </div>
+
+    <div id="chat" style="display: none;">
+        <div>
+            <canvas id="message-canvas" width="200" height="100" style="border: 1px; border-style: solid;"></canvas>
+            <br/>
+            <div style="padding-top: 10px;">
+                <button id="submit-button">send</button>
+            </div>
+        </div>  
+    </div> 
+    
+    
+
+    <div id="matchmaking">
+        <h3>Matchmaking...</h3>
+    </div>
+</body>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    var socket = io();
+    var id;
+
+    var chatPage = document.getElementById('chat');
+    var chatFeed = document.getElementById('chat-feed');
+    var canvas = document.getElementById('message-canvas');
+    var ctx = canvas.getContext('2d');
+    var mouseDown = false;
+    var submitButton = document.getElementById('submit-button');
+
+    var matchmakingPage = document.getElementById('matchmaking');
+
+    function getMousePos(canvas, evt) {
+        var rect = canvas.getBoundingClientRect();
+        return {
+            x: evt.clientX - rect.left,
+            y: evt.clientY - rect.top
+        };
+    }
+
+    draw = (ctx, x, y) => {
+        ctx.fillRect(x, y, 3, 3);
+    };
+
+    clearCanvas = (ctx, canvas) => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    };
+
+    chat.onmousemove = (event) => {
+        if (!mouseDown)
+            return;
+
+        var mPos = getMousePos(canvas, event);
+        draw(ctx, mPos.x, mPos.y);
+    };
+
+    chat.onmousedown = (event) => {
+        mouseDown = true;
+    };
+
+    chat.onmouseup = (event) => {
+        mouseDown = false;
+    };
+
+    socket.on('init', (data) => {
+        id = data.id;
+    });
+    
+    submitButton.onclick = (event) => {
+        // canvas.toBlob((blob) => {
+        //     socket.emit('message', {id: id, content: blob});
+        // });
+        socket.emit('message', {id: id, content: canvas.toDataURL()});
+        clearCanvas(ctx, canvas);
+    };
+
+    var chatCount = 0;
+    socket.on('recieve-message', (data) => {
+        chatFeed.innerHTML += '<img id=\"image' + chatCount + '\" href=\"#\"/> <br/>';
+        document.getElementById('image' + chatCount).src = data.content;
+        chatCount++;
+    });
+
+    socket.on('connection-status', (data) => {
+        console.log(data.status);
+    });
+
+    socket.on('found-connection', (data) => {
+        matchmakingPage.style = 'display: none;';
+        chatPage.style = 'display: inline; text-align: center; position: fixed; bottom: 0;';
+
+        console.log('connected to: ' + data.connection);
+    });
+
+    socket.on('matchmaking', () => {
+        matchmakingPage.style = 'display: inline;';
+        chatPage.style = 'display: none';
+    });
+</script>
